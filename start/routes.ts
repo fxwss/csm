@@ -7,7 +7,9 @@
 |
 */
 
+const VideosController = () => import('#controllers/videos_controller')
 import router from '@adonisjs/core/services/router'
+import { middleware } from './kernel.js'
 
 // Controllers imports
 const UsersController = () => import('#controllers/users_controller')
@@ -20,6 +22,11 @@ router
       .group(() => {
         router.post('login', [AuthController, 'login'])
         router.post('register', [AuthController, 'register'])
+        router.post('logout', [AuthController, 'logout']).use(
+          middleware.auth({
+            guards: ['api'],
+          })
+        )
       })
       .prefix('auth')
 
@@ -33,5 +40,28 @@ router
         router.delete(':id', [UsersController, 'destroy'])
       })
       .prefix('users')
+      .use(
+        middleware.auth({
+          guards: ['api'],
+        })
+      )
+
+    // /videos routes
+    router
+      .group(() => {
+        router.get('', [VideosController, 'index'])
+        router.post('', [VideosController, 'store'])
+        router.get(':id', [VideosController, 'show'])
+        router.get(':id/stream', [VideosController, 'stream'])
+        router.put(':id', [VideosController, 'update'])
+        router.delete(':id', [VideosController, 'destroy'])
+      })
+      .prefix('videos')
+      .use(
+        middleware.auth({
+          guards: ['api'],
+        })
+      )
+      .use(middleware.streamLimiter())
   })
   .prefix('api/v1')

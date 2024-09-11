@@ -1,30 +1,43 @@
-import BadRequestException from '#exceptions/bad_request_exception'
-import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import User from '#models/user'
 import { loginValidator, registerValidator } from '#validators/auth'
 import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
 
 export default class AuthController {
-  async login({ request }: HttpContext) {
-    const payload = await loginValidator.validate(request.all())
+  async login(ctx: HttpContext) {
+    const payload = await loginValidator.validate(ctx.request.all())
 
     const user = await User.query().where('email', payload.email).firstOrFail()
 
     if (await hash.verify(user.password, payload.password)) {
-      return user
+      return await User.accessTokens.create(user)
     }
 
-    throw new UnAuthorizedException('Invalid credentials')
+    return ctx.response.badRequest({
+      message: 'Invalid credentials',
+    })
   }
 
-  async register({ request }: HttpContext) {
-    const payload = await registerValidator.validate(request.all())
+  async register(ctx: HttpContext) {
+    const payload = await registerValidator.validate(ctx.request.all())
 
     if (await User.query().where('email', payload.email).first()) {
-      throw new BadRequestException('Email already exists')
+      return ctx.response.badRequest({
+        message: 'Email already registered',
+      })
     }
 
-    return await User.create(payload)
+    const user = await User.create(payload)
+    const token = await User.accessTokens.create(user)
+
+    return token
+  }
+
+  async logout(ctx: HttpContext) {
+    const auth = await ctx.auth.authenticate()
+
+    await User.accessTokens.delete(auth, auth.currentAccessToken.identifier)
+
+    return ctx.response.noContent()
   }
 }
