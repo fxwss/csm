@@ -9,10 +9,7 @@ export default class Video extends BaseModel {
   declare title: string
 
   @column({ serializeAs: null })
-  declare videoPath: string
-
-  @column({ serializeAs: null })
-  declare thumbnailPath: string
+  declare name: string
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

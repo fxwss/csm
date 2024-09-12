@@ -51,17 +51,17 @@ router
       .group(() => {
         router.get('', [VideosController, 'index'])
         router.post('', [VideosController, 'store'])
-        router.get(':id', [VideosController, 'show'])
-        router.get(':id/stream', [VideosController, 'stream'])
+        router.get(':id/playlist', [VideosController, 'playlist'])
+        router.get(':id/:segment', [VideosController, 'segment'])
         router.put(':id', [VideosController, 'update'])
         router.delete(':id', [VideosController, 'destroy'])
       })
       .prefix('videos')
-      .use(
-        middleware.auth({
-          guards: ['api'],
-        })
-      )
+      // .use(
+      //   middleware.auth({
+      //     guards: ['api'],
+      //   })
+      // )
       .use(middleware.streamLimiter())
   })
   .prefix('api/v1')

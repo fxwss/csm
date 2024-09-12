@@ -3,7 +3,23 @@ import { createVideoValidator } from '#validators/video'
 import { cuid } from '@adonisjs/core/helpers'
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
+import ffmpeg from 'fluent-ffmpeg'
 import fs from 'node:fs'
+
+function renameSegmentFiles(videoStoragePath: string, name: string) {
+  const list = fs.readdirSync(videoStoragePath)
+
+  for (const file of list) {
+    if (!file.endsWith('.ts')) {
+      continue
+    }
+
+    const filePath = `${videoStoragePath}/${file}`
+    const newFilePath = `${videoStoragePath}/${file.replace(name, '')}`
+
+    fs.existsSync(filePath) && fs.renameSync(filePath, newFilePath)
+  }
+}
 
 export default class VideosController {
   // return video list paginated
@@ -15,12 +31,14 @@ export default class VideosController {
   }
 
   async store(ctx: HttpContext) {
+    // set timeout
+    ctx.request.request.setTimeout(0)
+    ctx.response.response.setTimeout(0)
+
     const payload = await ctx.request.validateUsing(createVideoValidator)
 
     const name = cuid()
-
-    const videoStoragePath = 'storage/video'
-    const thumbnailStoragePath = 'storage/thumbnail'
+    const videoStoragePath = `storage/video/${name}`
 
     const videoExt = payload.video.extname
     const thumbnailExt = payload.thumbnail.extname
@@ -29,68 +47,72 @@ export default class VideosController {
     const thumbnailName = `${name}.${thumbnailExt}`
 
     const videoPath = `${videoStoragePath}/${name}.${videoExt}`
-    const thumbnailPath = `${thumbnailStoragePath}/${name}.${thumbnailExt}`
 
-    payload.video.move(videoStoragePath, {
+    // Save original files
+    await payload.video.move(videoStoragePath, {
       name: videoName,
     })
 
-    payload.thumbnail.move(thumbnailStoragePath, {
+    await payload.thumbnail.move(videoStoragePath, {
       name: thumbnailName,
     })
 
-    return await Video.create({
-      title: payload.title,
-      videoPath,
-      thumbnailPath,
+    return await new Promise((resolve, reject) => {
+      // Convert to HLS (HTTP Live Streaming) format
+      ffmpeg(videoPath)
+        .output(`${videoStoragePath}/${name}.m3u8`)
+        .addOptions([
+          '-hls_time 60', // Duration of each segment (60 seconds)
+          '-hls_list_size 0', // Include all segments in the playlist
+          '-f hls', // Format the output as HLS
+        ])
+        .on('end', async () => {
+          logger.info('Conversion ended for video %s', videoPath)
+
+          renameSegmentFiles(videoStoragePath, name)
+
+          resolve(await Video.create({ title: payload.title, name }))
+        })
+        .on('error', (err) => {
+          logger.error(err)
+          reject(ctx.response.internalServerError({ message: 'Error during HLS conversion' }))
+        })
+        .on('progress', (progress) => {
+          logger.info(`Processing: ${progress.percent?.toFixed(2)}% done for video ${videoPath}`)
+        })
+        .run()
     })
   }
 
-  async stream(ctx: HttpContext) {
-    const range = ctx.request.header('Range')
-
-    if (!range) {
-      return ctx.response.badRequest({ message: 'Range header is required' })
-    }
-
+  async playlist(ctx: HttpContext) {
     const video = await Video.findOrFail(ctx.params.id)
 
     if (!video) {
       return ctx.response.notFound({ message: 'Video not found' })
     }
 
-    const { size } = fs.statSync(video.videoPath)
+    const videoPath = `storage/video/${video.name}/${video.name}.m3u8`
 
-    const parts = range.replace(/bytes=/, '').split('-')
-    const start = parseInt(parts[0], 10)
-    const end = parts[1] ? parseInt(parts[1], 10) : size - 1
-    const chunksize = end - start + 1
-
-    ctx.response.header('Content-Range', `bytes ${start}-${end}/${size}`)
-    ctx.response.header('Accept-Ranges', 'bytes')
-    ctx.response.header('Content-Length', chunksize)
-    ctx.response.header('Content-Type', 'application/octet-stream')
-    ctx.response.header('Connection', 'keep-alive')
-    ctx.response.header('Cache-Control', 'no-cache')
-    ctx.response.header('Pragma', 'no-cache')
-
-    // Send stream data
-    ctx.response.status(206).stream(fs.createReadStream(video.videoPath, { start, end }))
+    return ctx.response.download(videoPath)
   }
 
-  async show(ctx: HttpContext) {
+  async segment(ctx: HttpContext) {
     const video = await Video.findOrFail(ctx.params.id)
 
     if (!video) {
       return ctx.response.notFound({ message: 'Video not found' })
     }
 
-    const { size } = fs.statSync(video.videoPath)
+    const segment = (ctx.params.segment as string).replace(video.name, '')
+    const segmentPath = `storage/video/${video.name}/${segment}`
 
-    return {
-      ...video.toJSON(),
-      sizeInBytes: size,
+    if (!fs.existsSync(segmentPath)) {
+      return ctx.response.notFound({ message: 'Segment not found' })
     }
+
+    logger.info('Serving segment %s for video %s', segment.replace('.ts', ''), video.id)
+
+    return ctx.response.download(segmentPath)
   }
 
   async update(ctx: HttpContext) {
