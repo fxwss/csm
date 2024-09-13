@@ -93,6 +93,10 @@ export default class VideosController {
 
     const videoPath = `storage/video/${video.name}/${video.name}.m3u8`
 
+    if (!fs.existsSync(videoPath)) {
+      return ctx.response.notFound({ message: 'Playlist not found' })
+    }
+
     return ctx.response.download(videoPath)
   }
 

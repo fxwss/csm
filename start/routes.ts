@@ -57,11 +57,11 @@ router
         router.delete(':id', [VideosController, 'destroy'])
       })
       .prefix('videos')
-      // .use(
-      //   middleware.auth({
-      //     guards: ['api'],
-      //   })
-      // )
+      .use(
+        middleware.auth({
+          guards: ['api'],
+        })
+      )
       .use(middleware.streamLimiter())
   })
   .prefix('api/v1')

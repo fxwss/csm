@@ -57,6 +57,7 @@
     "@adonisjs/core": "^6.12.1",
     "@adonisjs/cors": "^2.2.1",
     "@adonisjs/lucid": "^21.2.0",
+    "@adonisjs/redis": "^9.1.0",
     "@vinejs/vine": "^2.1.0",
     "better-sqlite3": "^11.3.0",
     "ffmpeg": "^0.0.4",
