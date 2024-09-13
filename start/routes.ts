@@ -53,6 +53,7 @@ router
         router.post('', [VideosController, 'store'])
         router.get(':id/playlist', [VideosController, 'playlist'])
         router.get(':id/:segment', [VideosController, 'segment'])
+        router.post(':id/stop', [VideosController, 'stopStream'])
         router.put(':id', [VideosController, 'update'])
         router.delete(':id', [VideosController, 'destroy'])
       })
@@ -62,6 +63,5 @@ router
           guards: ['api'],
         })
       )
-      .use(middleware.streamLimiter())
   })
   .prefix('api/v1')

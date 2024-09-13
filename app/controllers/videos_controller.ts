@@ -5,6 +5,47 @@ import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import ffmpeg from 'fluent-ffmpeg'
 import fs from 'node:fs'
+import redis from '@adonisjs/redis/services/main'
+import User from '#models/user'
+
+function getIdentifier(ctx: HttpContext, user: User, videoId: number) {
+  const id = user.id
+
+  const deviceId = ctx.request.header('x-device-id') ?? cuid()
+
+  ctx.response.header('x-device-id', deviceId)
+
+  const userAgent = ctx.request.header('user-agent')
+  const ip = ctx.request.ip()
+
+  return [id, videoId, userAgent, ip, deviceId].join('_')
+}
+
+async function updateStreamCount(ctx: HttpContext, videoId: number) {
+  const user = await ctx.auth.authenticate()
+  const identifier = getIdentifier(ctx, user, videoId)
+
+  const strUserId = user.id.toString()
+
+  const key = `user:${strUserId}:streams:${identifier}`
+  const all = `user:${strUserId}:streams:*`
+
+  const streams = await redis.keys(all)
+
+  const isNewStream = !streams.includes(key)
+  const diff = isNewStream ? 1 : 0
+
+  if (streams.length + diff > user.maxStreams) {
+    return ctx.response.forbidden({ message: 'Max streams reached' })
+  }
+
+  await redis.set(key, 'active')
+
+  logger.info(`User ${user.id} is streaming ${streams.length + diff} videos`)
+
+  // Expire key after 10 minutes
+  await redis.expire(key, 60 * 10)
+}
 
 function renameSegmentFiles(videoStoragePath: string, name: string) {
   const list = fs.readdirSync(videoStoragePath)
@@ -97,6 +138,10 @@ export default class VideosController {
       return ctx.response.notFound({ message: 'Playlist not found' })
     }
 
+    logger.info('Serving playlist for video %s', video.id)
+
+    await updateStreamCount(ctx, video.id)
+
     return ctx.response.download(videoPath)
   }
 
@@ -116,7 +161,28 @@ export default class VideosController {
 
     logger.info('Serving segment %s for video %s', segment.replace('.ts', ''), video.id)
 
+    await updateStreamCount(ctx, video.id)
+
     return ctx.response.download(segmentPath)
+  }
+
+  async stopStream(ctx: HttpContext) {
+    const video = await Video.findOrFail(ctx.params.id)
+
+    const user = await ctx.auth.authenticate()
+    const identifier = getIdentifier(ctx, user, video.id)
+
+    const strUserId = user.id.toString()
+
+    const key = `user:${strUserId}:streams:${identifier}`
+
+    if ((await redis.get(key)) === null) {
+      return ctx.response.notFound({ message: 'Stream not found' })
+    }
+
+    await redis.del(key)
+
+    return ctx.response.ok({ message: 'Stream stopped' })
   }
 
   async update(ctx: HttpContext) {

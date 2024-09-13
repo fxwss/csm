@@ -1,5 +1,7 @@
+import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
+import { type BelongsTo } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import User from './user.js'
 
 export default class Video extends BaseModel {
   @column({ isPrimary: true })
@@ -10,6 +12,9 @@ export default class Video extends BaseModel {
 
   @column({ serializeAs: null })
   declare name: string
+
+  @belongsTo(() => User)
+  declare createdBy: BelongsTo<typeof User>
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
