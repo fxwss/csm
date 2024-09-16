@@ -15,12 +15,6 @@
 import User, { Roles } from '#models/user'
 import { Bouncer } from '@adonisjs/bouncer'
 
-/**
- * Delete the following ability to start from
- * scratch
- */
 export const createAdmin = Bouncer.ability((user: User) => {
-  console.log(user)
-
   return user.role === Roles.admin
 })

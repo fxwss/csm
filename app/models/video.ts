@@ -13,8 +13,13 @@ export default class Video extends BaseModel {
   @column({ serializeAs: null })
   declare name: string
 
-  @belongsTo(() => User)
-  declare createdBy: BelongsTo<typeof User>
+  @belongsTo(() => User, {
+    foreignKey: 'user_id',
+  })
+  declare user: BelongsTo<typeof User>
+
+  @column()
+  declare userId: number
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

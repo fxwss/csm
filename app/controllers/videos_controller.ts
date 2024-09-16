@@ -1,5 +1,5 @@
 import Video from '#models/video'
-import { createVideoValidator } from '#validators/video'
+import { createVideoValidator, updateVideoValidator } from '#validators/video'
 import { cuid } from '@adonisjs/core/helpers'
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
@@ -7,6 +7,7 @@ import ffmpeg from 'fluent-ffmpeg'
 import fs from 'node:fs'
 import redis from '@adonisjs/redis/services/main'
 import User from '#models/user'
+import VideoPolicy from '#policies/video_policy'
 
 function getIdentifier(ctx: HttpContext, user: User, videoId: number) {
   const id = user.id
@@ -72,9 +73,9 @@ export default class VideosController {
   }
 
   async store(ctx: HttpContext) {
-    // set timeout
-    ctx.request.request.setTimeout(0)
-    ctx.response.response.setTimeout(0)
+    if (await ctx.bouncer.with(VideoPolicy).denies('create')) {
+      return ctx.response.forbidden({ message: 'You are not allowed to create videos' })
+    }
 
     const payload = await ctx.request.validateUsing(createVideoValidator)
 
@@ -88,6 +89,9 @@ export default class VideosController {
     const thumbnailName = `${name}.${thumbnailExt}`
 
     const videoPath = `${videoStoragePath}/${name}.${videoExt}`
+
+    // make path if it doesn't exist
+    fs.mkdirSync(videoStoragePath, { recursive: true })
 
     // Save original files
     await payload.video.move(videoStoragePath, {
@@ -112,7 +116,12 @@ export default class VideosController {
 
           renameSegmentFiles(videoStoragePath, name)
 
-          resolve(await Video.create({ title: payload.title, name }))
+          const user = await ctx.auth.authenticate()
+          const video = await user.related('videos').create({ title: payload.title, name })
+
+          // await video.save()
+
+          resolve(video)
         })
         .on('error', (err) => {
           logger.error(err)
@@ -186,10 +195,28 @@ export default class VideosController {
   }
 
   async update(ctx: HttpContext) {
-    // code to update video
+    const payload = await ctx.request.validateUsing(updateVideoValidator)
+
+    const video = await Video.findOrFail(ctx.params.id)
+
+    if (!video) {
+      return ctx.response.notFound({ message: 'Video not found' })
+    }
+
+    if (await ctx.bouncer.with(VideoPolicy).denies('update')) {
+      return ctx.response.forbidden({ message: 'You are not allowed to update this video' })
+    }
+
+    return await video.merge(payload).save()
   }
 
   async destroy(ctx: HttpContext) {
-    // code to delete video
+    const video = await Video.findOrFail(ctx.params.id)
+
+    if (await ctx.bouncer.with(VideoPolicy).denies('delete')) {
+      return ctx.response.forbidden({ message: 'You are not allowed to delete this video' })
+    }
+
+    await video.delete()
   }
 }

@@ -34,10 +34,19 @@ router
     router
       .group(() => {
         router.get('', [UsersController, 'index'])
-        router.post('', [UsersController, 'store'])
-        router.get(':id', [UsersController, 'show'])
-        router.put(':id', [UsersController, 'update'])
-        router.delete(':id', [UsersController, 'destroy'])
+        router.get(':id', [UsersController, 'show']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
+        router.patch(':id', [UsersController, 'update']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
+        router.patch('me', [UsersController, 'update'])
+        router.delete(':id', [UsersController, 'destroy']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
       })
       .prefix('users')
       .use(
@@ -51,11 +60,26 @@ router
       .group(() => {
         router.get('', [VideosController, 'index'])
         router.post('', [VideosController, 'store'])
-        router.get(':id/playlist', [VideosController, 'playlist'])
-        router.get(':id/:segment', [VideosController, 'segment'])
-        router.post(':id/stop', [VideosController, 'stopStream'])
-        router.put(':id', [VideosController, 'update'])
-        router.delete(':id', [VideosController, 'destroy'])
+        router.get(':id/playlist', [VideosController, 'playlist']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
+        router.get(':id/:segment', [VideosController, 'segment']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
+        router.post(':id/stop', [VideosController, 'stopStream']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
+        router.patch(':id', [VideosController, 'update']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
+        router.delete(':id', [VideosController, 'destroy']).where('id', {
+          match: /^[0-9]+$/,
+          cast: (value) => Number(value),
+        })
       })
       .prefix('videos')
       .use(

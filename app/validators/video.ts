@@ -15,3 +15,15 @@ export const createVideoValidator = vine.compile(
     }),
   })
 )
+
+export const updateVideoValidator = vine.compile(
+  vine.object({
+    title: vine.string().trim().minLength(3).maxLength(255).optional(),
+    thumbnail: vine
+      .file({
+        size: '100mb',
+        extnames: ['jpg', 'png'],
+      })
+      .optional(),
+  })
+)

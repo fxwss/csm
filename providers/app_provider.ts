@@ -11,7 +11,11 @@ export default class AppProvider {
   /**
    * The container bindings have booted
    */
-  async boot() {}
+  async boot() {
+    // Create paths
+    this.app.tmpPath('db.sqlite3')
+    this.app.tmpPath('uploads')
+  }
 
   /**
    * The application has been booted
