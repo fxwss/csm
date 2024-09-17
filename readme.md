@@ -32,3 +32,6 @@
 
 ## Access
 Default admin password is `admin123` and email is `admin@example.com`
+
+## Collection
+Insomnia collection is available in the root directory of the project
