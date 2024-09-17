@@ -56,3 +56,7 @@ Insomnia collection is available in the root directory of the project
 - There's not suficient data in Video model, it would be nice to have more data like views, likes, dislikes, etc; (duration and size are not needed as they can be calculated);
 - Add a better way to handle the video processing, like a queue system;
 - Add a better way to handle the video streaming, like a CDN;
+
+
+## Why there's no docker?
+- I didn't had the time to create a dockerfile and docker-compose file then test it, but it's a good idea to have it;
