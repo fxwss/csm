@@ -191,6 +191,8 @@ export default class VideosController {
 
     await redis.del(key)
 
+    logger.info(`User ${user.id} stopped streaming video ${video.id}`)
+
     return ctx.response.ok({ message: 'Stream stopped' })
   }
 
