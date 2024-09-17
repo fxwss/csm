@@ -1,15 +1,21 @@
 
-
-
 # Steps to run
 
 - install and add to path system dependencies
   - ffmpeg
+  - redis
 
 - Install dependencies 
 ```bash
   npm ci
 ```
+
+- Fill in the `.env` file
+```bash
+  cp .env.example .env
+  # fill in the .env file with your own values
+```
+
 - Run migrations
 ```bash
   noce ace migration:run
