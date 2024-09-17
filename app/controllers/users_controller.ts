@@ -5,9 +5,30 @@ import { updateUserValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class UsersController {
-  async index() {}
+  async index(ctx: HttpContext) {
+    if (await ctx.bouncer.with(UserPolicy).denies('list')) {
+      return ctx.response.forbidden({
+        message: 'You are not allowed to list users',
+      })
+    }
 
-  async show() {}
+    const page = ctx.request.input('page', 1)
+    const limit = ctx.request.input('limit', 10)
+
+    return await User.query().paginate(page, limit)
+  }
+
+  async show(ctx: HttpContext) {
+    const user = await User.findOrFail(ctx.params.id ?? ctx.auth.user?.id)
+
+    if (await ctx.bouncer.with(UserPolicy).denies('view', user)) {
+      return ctx.response.forbidden({
+        message: 'You are not allowed to view this user',
+      })
+    }
+
+    return user
+  }
 
   async update(ctx: HttpContext) {
     const otherId = ctx.params.id

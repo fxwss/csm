@@ -4,6 +4,17 @@ import app from '@adonisjs/core/services/app'
 import type { Config } from '@japa/runner/types'
 import { pluginAdonisJS } from '@japa/plugin-adonisjs'
 import testUtils from '@adonisjs/core/services/test_utils'
+import env from '#start/env'
+import redis from '@adonisjs/redis/services/main'
+import fs from 'node:fs/promises'
+import path, { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const __filename = fileURLToPath(import.meta.url)
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const __dirname = dirname(__filename)
 
 /**
  * This file is imported by the "bin/test.ts" entrypoint file
@@ -13,7 +24,13 @@ import testUtils from '@adonisjs/core/services/test_utils'
  * Configure Japa plugins in the plugins array.
  * Learn more - https://japa.dev/docs/runner-config#plugins-optional
  */
-export const plugins: Config['plugins'] = [assert(), apiClient(), pluginAdonisJS(app)]
+export const plugins: Config['plugins'] = [
+  assert(),
+  apiClient({
+    baseURL: `http://${env.get('HOST')}:${env.get('PORT')}/api/v1`,
+  }),
+  pluginAdonisJS(app),
+]
 
 /**
  * Configure lifecycle function to run before and after all the
@@ -23,7 +40,17 @@ export const plugins: Config['plugins'] = [assert(), apiClient(), pluginAdonisJS
  * The teardown functions are executer after all the tests
  */
 export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
-  setup: [],
+  setup: [
+    () => testUtils.db().truncate(),
+    () => testUtils.db().seed(),
+    async () => {
+      await redis.flushall()
+    },
+    async () => {
+      await fs.rmdir(path.join(__dirname, '../storage'), { recursive: true })
+      await fs.mkdir(path.join(__dirname, '../storage'))
+    },
+  ],
   teardown: [],
 }
 

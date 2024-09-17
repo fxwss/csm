@@ -38,11 +38,16 @@ router
           match: /^[0-9]+$/,
           cast: (value) => Number(value),
         })
+
+        router.get('me', [UsersController, 'show'])
+
         router.patch(':id', [UsersController, 'update']).where('id', {
           match: /^[0-9]+$/,
           cast: (value) => Number(value),
         })
+
         router.patch('me', [UsersController, 'update'])
+
         router.delete(':id', [UsersController, 'destroy']).where('id', {
           match: /^[0-9]+$/,
           cast: (value) => Number(value),
