@@ -25,4 +25,4 @@
 ```
 
 ## Access
-Default admin password is `admin` and email is `admin@example.com`
+Default admin password is `admin123` and email is `admin@example.com`
