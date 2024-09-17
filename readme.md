@@ -53,6 +53,6 @@ Insomnia collection is available in the root directory of the project
 - Add signed url's for the video files;
 - Move to a more robust database like Postgres;
 - Write a better tool for the video processing, as the current one is just a simple fixed ffmpeg command;
-- There's not suficient data in Video mode, it would be nice to have more data like views, likes, dislikes, etc; (duration and size) are not needed as they can be calculated;
+- There's not suficient data in Video model, it would be nice to have more data like views, likes, dislikes, etc; (duration and size are not needed as they can be calculated);
 - Add a better way to handle the video processing, like a queue system;
 - Add a better way to handle the video streaming, like a CDN;
